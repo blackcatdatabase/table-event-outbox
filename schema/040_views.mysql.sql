@@ -1,27 +1,4 @@
--- Auto-generated from schema-views-mysql.psd1 (map@db2f8b8)
--- engine: mysql
--- table:  event_outbox
--- Contract view for [event_outbox]
--- Adds helpers: is_pending, is_due.
-CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_outbox AS
-SELECT
-  id,
-  event_key,
-  entity_table,
-  entity_pk,
-  event_type,
-  payload,
-  status,
-  attempts,
-  next_attempt_at,
-  processed_at,
-  producer_node,
-  created_at,
-  (status = 'pending') AS is_pending,
-  (status = 'pending' AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())) AS is_due
-FROM event_outbox;
-
--- Auto-generated from schema-views-mysql.psd1 (map@db2f8b8)
+-- Auto-generated from schema-views-mysql.psd1 (map@62c9c93)
 -- engine: mysql
 -- table:  event_outbox_metrics
 -- Aggregated metrics for [event_outbox]
@@ -72,24 +49,35 @@ SELECT
 FROM base b
 LEFT JOIN pcts p ON p.event_type = b.event_type;
 
-
--- Auto-generated from schema-views-mysql.psd1 (map@db2f8b8)
+-- Auto-generated from schema-views-mysql.psd1 (map@62c9c93)
 -- engine: mysql
--- table:  event_outbox_backlog_by_node
--- Pending outbox backlog per producer node/channel
-CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_sync_backlog_by_node AS
+-- table:  event_outbox_throughput_hourly
+-- Hourly throughput for outbox/inbox
+CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_throughput_hourly AS
 SELECT
-  COALESCE(producer_node, '(unknown)') AS producer_node,
-  event_type,
-  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
-  SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)  AS failed,
-  COUNT(*) AS total
-FROM event_outbox
-GROUP BY COALESCE(producer_node, '(unknown)'), event_type
-ORDER BY pending DESC, failed DESC;
+  hour_ts,
+  SUM(outbox_cnt) AS outbox_cnt,
+  SUM(inbox_cnt)  AS inbox_cnt
+FROM (
+  SELECT
+    DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') AS hour_ts,
+    COUNT(*) AS outbox_cnt,
+    0 AS inbox_cnt
+  FROM event_outbox
+  GROUP BY hour_ts
+  UNION ALL
+  SELECT
+    DATE_FORMAT(received_at, '%Y-%m-%d %H:00:00') AS hour_ts,
+    0 AS outbox_cnt,
+    COUNT(*) AS inbox_cnt
+  FROM event_inbox
+  GROUP BY hour_ts
+) t
+GROUP BY hour_ts
+ORDER BY hour_ts DESC;
 
 
--- Auto-generated from schema-views-mysql.psd1 (map@db2f8b8)
+-- Auto-generated from schema-views-mysql.psd1 (map@62c9c93)
 -- engine: mysql
 -- table:  event_outbox_latency
 -- Processing latency (created -> processed) by type
@@ -120,30 +108,42 @@ FROM ranked
 GROUP BY event_type;
 
 
--- Auto-generated from schema-views-mysql.psd1 (map@db2f8b8)
+-- Auto-generated from schema-views-mysql.psd1 (map@62c9c93)
 -- engine: mysql
--- table:  event_outbox_throughput_hourly
--- Hourly throughput for outbox/inbox
-CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_throughput_hourly AS
+-- table:  event_outbox
+-- Contract view for [event_outbox]
+-- Adds helpers: is_pending, is_due.
+CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_outbox AS
 SELECT
-  hour_ts,
-  SUM(outbox_cnt) AS outbox_cnt,
-  SUM(inbox_cnt)  AS inbox_cnt
-FROM (
-  SELECT
-    DATE_FORMAT(created_at, '%Y-%m-%d %H:00:00') AS hour_ts,
-    COUNT(*) AS outbox_cnt,
-    0 AS inbox_cnt
-  FROM event_outbox
-  GROUP BY hour_ts
-  UNION ALL
-  SELECT
-    DATE_FORMAT(received_at, '%Y-%m-%d %H:00:00') AS hour_ts,
-    0 AS outbox_cnt,
-    COUNT(*) AS inbox_cnt
-  FROM event_inbox
-  GROUP BY hour_ts
-) t
-GROUP BY hour_ts
-ORDER BY hour_ts DESC;
+  id,
+  event_key,
+  entity_table,
+  entity_pk,
+  event_type,
+  payload,
+  status,
+  attempts,
+  next_attempt_at,
+  processed_at,
+  producer_node,
+  created_at,
+  (status = 'pending') AS is_pending,
+  (status = 'pending' AND (next_attempt_at IS NULL OR next_attempt_at <= NOW())) AS is_due
+FROM event_outbox;
+
+
+-- Auto-generated from schema-views-mysql.psd1 (map@62c9c93)
+-- engine: mysql
+-- table:  event_outbox_backlog_by_node
+-- Pending outbox backlog per producer node/channel
+CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_sync_backlog_by_node AS
+SELECT
+  COALESCE(producer_node, '(unknown)') AS producer_node,
+  event_type,
+  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+  SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)  AS failed,
+  COUNT(*) AS total
+FROM event_outbox
+GROUP BY COALESCE(producer_node, '(unknown)'), event_type
+ORDER BY pending DESC, failed DESC;
 
