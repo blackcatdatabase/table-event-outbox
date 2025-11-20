@@ -1,0 +1,3 @@
+-- Auto-generated from schema-map-mysql.psd1 (map@734a489)
+-- engine: mysql
+-- table:  event_outbox

@@ -1,0 +1,3 @@
+-- Auto-generated from schema-map-postgres.psd1 (map@9d3471b)
+-- engine: postgres
+-- table:  event_outbox
