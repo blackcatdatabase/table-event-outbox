@@ -1,4 +1,4 @@
--- Auto-generated from schema-views-mysql.psd1 (map@mtime:2025-11-27T15:35:35Z)
+-- Auto-generated from schema-views-mysql.yaml (map@94ebe6c)
 -- engine: mysql
 -- table:  event_outbox
 

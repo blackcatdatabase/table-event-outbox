@@ -10,6 +10,7 @@ use BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto as Dto;
 use BlackCat\Database\Packages\EventOutbox\Mapper\EventOutboxDtoMapper as RowMapper;
 use BlackCat\Database\Contracts\ContractRepository as RepoContract;
 use BlackCat\Database\Contracts\KeysetRepository as KeysetRepoContract;
+use BlackCat\Database\Packages\EventOutbox\Repository\EventOutboxRepositoryInterface;
 use BlackCat\Database\Support\OrderByTools;
 use BlackCat\Database\Support\SqlIdentifier as Ident;
 use BlackCat\Database\Support\PkTools;
@@ -18,27 +19,51 @@ use BlackCat\Database\Support\KeysetPaginator;
 use BlackCat\Database\Support\UpsertBuilder;
 use BlackCat\Database\Support\RepositoryHelpers;
 
-final class EventOutboxRepository implements RepoContract, KeysetRepoContract
+class EventOutboxRepository implements EventOutboxRepositoryInterface, RepoContract, KeysetRepoContract
 {
-    use OrderByTools, PkTools, RepositoryHelpers;
+use OrderByTools, PkTools, RepositoryHelpers;
+
+    /** @var mixed literal token for upsert keys (array or empty). */
+    private mixed $tokenUpsertKeys = [];
 
     public function __construct(private readonly Database $db) {}
 
     /**
-     * Optionally override the Definitions FQN – trait otherwise infers it from the repository FQN.
+     * Optionally override the Definitions FQN â€“ trait otherwise infers it from the repository FQN.
      */
     protected function def(): string { return \BlackCat\Database\Packages\EventOutbox\Definitions::class; }
 
-    /** @return array<string,mixed>|Dto|null */
-    private function mapReturn(?array $row, bool $asDto): array|Dto|null {
-        if (!$asDto || !$row) return $row;
-        return RowMapper::fromRow($row);
+    /** @return array<string,mixed>|null */
+    private function mapReturnRow(array|Dto|null $row): ?array {
+      return is_array($row) ? $row : null;
+    }
+
+    /** @return Dto|null */
+    private function mapReturnDto(array|Dto|null $row): ?Dto {
+      if ($row instanceof Dto) {
+        return $row;
+      }
+      return is_array($row) ? RowMapper::fromRow($row) : null;
+    }
+
+    /** Resolve upsert keys (generator tokens or unique keys fallback). */
+    private function resolveUpsertKeys(): array
+    {
+      $keys = $this->tokenUpsertKeys;
+      if (!is_array($keys) || $keys === []) {
+        $uqs  = Definitions::uniqueKeys();
+        $keys = (array)($uqs[0] ?? []);
+      }
+      if (!is_array($keys) || $keys === []) {
+        $keys = $this->pkColumns(Definitions::class);
+      }
+      return $keys;
     }
 
     /** @return array<string,mixed>|Dto|null */
     public function getById(int|string|array $id, bool $asDto = false): array|Dto|null {
         $row = $this->findById($id);
-        return $this->mapReturn($row, $asDto);
+        return $asDto ? $this->mapReturnDto($row) : $this->mapReturnRow($row);
     }
 
     // --- INSERT / BULK -------------------------------------------------------
@@ -106,7 +131,7 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
         return [$row, $updateCols];
     }
 
-    /** Standard upsert – preserves soft-delete (no revive). */
+    /** Standard upsert â€“ preserves soft-delete (no revive). */
     public function upsert(#[\SensitiveParameter] array $row): void
     {
         $this->doUpsert($row, false);
@@ -124,13 +149,9 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
         $row  = $this->filterCols($this->normalizeInputRow($row));
         if (!$row) return;
 
-        $keys = [ 'event_key' ];
-        if (!$keys) {
-            $uqs = Definitions::uniqueKeys();
-            $keys = (is_array($uqs) && isset($uqs[0]) && is_array($uqs[0]) && $uqs[0]) ? $uqs[0] : $this->pkColumns(Definitions::class);
-        }
+        $keys = $this->resolveUpsertKeys();
 
-        $updCols = [ 'payload', 'status', 'attempts', 'next_attempt_at', 'processed_at', 'producer_node' ];
+        $updCols = [];
         $updCols = array_values(array_diff($updCols, array_merge($this->pkColumns(Definitions::class), $keys)));
 
         // Revive policy
@@ -147,7 +168,7 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
         $this->db->execute($sql, $params);
     }
 
-    /** Upsert by keys – default behavior keeps soft-delete. */
+    /** Upsert by keys â€“ default behavior keeps soft-delete. */
     public function upsertByKeys(array $row, array $keys, array $updateColumns = []): void
     {
         $this->doUpsertByKeys($row, $keys, $updateColumns, false);
@@ -193,9 +214,12 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
         ));
         if (!$rows) { return 0; }
 
-        if (class_exists(\BlackCat\Database\BulkUpsertRepository::class) && [ 'event_key' ] !== []) {
-            $bulk = new \BlackCat\Database\BulkUpsertRepository($this->db, \BlackCat\Database\Packages\EventOutbox\Definitions::table());
-            return $bulk->upsertMany($rows, [ 'event_key' ], [ 'payload', 'status', 'attempts', 'next_attempt_at', 'processed_at', 'producer_node' ]);
+        // Optimized helper (avoids per-row upsert when definitions provide keys/columns)
+        $helperKeys = $this->resolveUpsertKeys();
+        if ($helperKeys && class_exists(\BlackCat\Database\Support\BulkUpsertHelper::class)) {
+          $bulk = new \BlackCat\Database\Support\BulkUpsertHelper($this->db, \BlackCat\Database\Packages\EventOutbox\Definitions::class);
+          $bulk->upsertMany($rows, $helperKeys, []);
+          return count($rows);
         }
 
         $n = 0;
@@ -208,13 +232,77 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
         $rows = array_values(array_filter($rows, 'is_array'));
         if (!$rows) { return 0; }
 
-        // Revive policy is per row - keep it simple
+        // Optimized helper (revive mode)
+        $helperKeys = $this->resolveUpsertKeys();
+        if ($helperKeys && class_exists(\BlackCat\Database\Support\BulkUpsertHelper::class)) {
+          $bulk = new \BlackCat\Database\Support\BulkUpsertHelper($this->db, \BlackCat\Database\Packages\EventOutbox\Definitions::class);
+          $bulk->upsertMany($rows, $helperKeys, []);
+          return count($rows);
+        }
+
         $n = 0;
         foreach ($rows as $r) { $this->doUpsert((array)$r, true); $n++; }
         return $n;
     }
 
     // --- UPDATE / DELETE / RESTORE ------------------------------------------
+
+    public function updateByIdWhere(int|string|array $id, #[\SensitiveParameter] array $row, array $where): int
+    {
+        if ($where === []) {
+            return $this->updateById($id, $row);
+        }
+
+        $row = $this->normalizeInputRow($row);
+
+        $tbl   = Ident::qi($this->db, Definitions::table());
+        $pkCols= $this->pkColumns(Definitions::class);
+        $idMap = $this->normalizePkInput($id, $pkCols);
+
+        $verCol = Definitions::versionColumn();
+        $updAt  = Definitions::updatedAtColumn();
+
+        $hasExpectedVersion = $verCol && array_key_exists($verCol, $row);
+        $expectedVersion = $hasExpectedVersion ? $row[$verCol] : null;
+        if ($hasExpectedVersion) unset($row[$verCol]);
+
+        $row = $this->filterCols($row);
+
+        $params  = [];
+        $whereSql = $this->buildPkWhere('', $idMap, $params, 'pk_');
+
+        foreach ($where as $col => $val) {
+            $ph = 'w_' . $col;
+            $whereSql .= ' AND ' . Ident::q($this->db, (string)$col) . ' = :' . $ph;
+            $params[$ph] = $val;
+        }
+
+        $pkSet   = array_fill_keys($pkCols, true);
+        $assign  = [];
+
+        foreach ($row as $k => $v) {
+            if (isset($pkSet[$k])) continue;
+            $assign[]     = Ident::q($this->db, $k) . ' = :' . $k;
+            $params[$k]   = $v;
+        }
+
+        if ($verCol && $this->isNumericVersion()) {
+            $assign[] = Ident::q($this->db, $verCol) . ' = ' . Ident::q($this->db, $verCol) . ' + 1';
+        }
+        if ($updAt && !array_key_exists($updAt, $row)) {
+            $assign[] = Ident::q($this->db, $updAt) . ' = CURRENT_TIMESTAMP';
+        }
+
+        if (!$assign) return 0;
+
+        $sql = "UPDATE {$tbl} SET " . implode(', ', $assign) . " WHERE {$whereSql}";
+        if ($verCol && $hasExpectedVersion) {
+            $sql .= ' AND ' . Ident::q($this->db, $verCol) . ' = :expected_version';
+            $params['expected_version'] = is_numeric($expectedVersion) ? (int)$expectedVersion : $expectedVersion;
+        }
+
+        return $this->db->execute($sql, $params);
+    }
 
     public function updateById(int|string|array $id, #[\SensitiveParameter] array $row): int {
         $row = $this->normalizeInputRow($row);
@@ -245,7 +333,7 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
             $params[$k]   = $v;
         }
 
-        // touch – verze/updated_at
+        // touch â€“ verze/updated_at
         if ($verCol && $this->isNumericVersion()) {
             $assign[] = Ident::q($this->db, $verCol) . ' = ' . Ident::q($this->db, $verCol) . ' + 1';
         }
@@ -322,7 +410,7 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
      */
     public function findAllByIds(array $ids): array
     {
-        if (!$ids) return [];
+      if (!$ids) return [];
         $tbl = Ident::qi($this->db, Definitions::table());
         $pkCols = $this->pkColumns(Definitions::class);
         $whereParts = [];
@@ -385,16 +473,26 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
         $where = '(' . implode(' AND ', $parts) . ') AND ' . $this->softGuard('t');
 
         $row = $this->db->fetch("SELECT t.* FROM {$view} t WHERE {$where} LIMIT 1", $params) ?: null;
-        return $this->mapReturn($row, $asDto);
+        return $asDto ? $this->mapReturnDto($row) : $this->mapReturnRow($row);
     }
 
+    /**
+     * @param non-empty-string $whereSql
+     * @param array<string,bool|int|float|string|\DateTimeInterface|null> $params
+     */
     public function exists(string $whereSql = '1=1', array $params = []): bool {
+        $whereSql = trim($whereSql) === '' ? '1=1' : $whereSql;
         $view = Ident::qi($this->db, Definitions::contractView());
         $where = '(' . $whereSql . ') AND ' . $this->softGuard('t');
         return (bool)$this->db->fetchOne("SELECT 1 FROM {$view} t WHERE {$where} LIMIT 1", $params);
     }
 
+    /**
+     * @param non-empty-string $whereSql
+     * @param array<string,bool|int|float|string|\DateTimeInterface|null> $params
+     */
     public function count(string $whereSql = '1=1', array $params = []): int {
+        $whereSql = trim($whereSql) === '' ? '1=1' : $whereSql;
         $view = Ident::qi($this->db, Definitions::contractView());
         $where = '(' . $whereSql . ') AND ' . $this->softGuard('t');
         return (int)$this->db->fetchOne("SELECT COUNT(*) FROM {$view} t WHERE {$where}", $params);
@@ -404,7 +502,9 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
      * @return array{items:array<int,array<string,mixed>>,total:int,page:int,perPage:int}
      */
     public function paginate(object $criteria): array {
-        if (!$criteria instanceof Criteria) throw new \InvalidArgumentException('Expected ' . Criteria::class);
+        if (!$criteria instanceof Criteria) {
+            throw new \InvalidArgumentException('Expected ' . Criteria::class);
+        }
         $c = $criteria;
 
         [$where, $params, $order, $limit, $offset, $joins] = $c->toSql(true);
@@ -418,9 +518,7 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
         return ['items'=>$items, 'total'=>$total, 'page'=>$c->page(), 'perPage'=>$c->perPage()];
     }
 
-    /** @param 'wait'|'nowait'|'skip_locked' $mode
-     * @param 'update'|'share' $strength
-    */
+    /** @param 'wait'|'nowait'|'skip_locked' $mode  @param 'update'|'share' $strength */
     public function lockById(int|string|array $id, string $mode = 'wait', string $strength = 'update'): ?array {
         $tbl = Ident::qi($this->db, Definitions::table());
         $params=[]; $where = $this->buildPkWhere('', $this->normalizePkInput($id, $this->pkColumns(Definitions::class)), $params, 'pk_');
@@ -428,11 +526,14 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
         $sql = "SELECT * FROM {$tbl} WHERE {$where}";
         if ($guard !== '1=1') { $sql .= ' AND ' . $guard; }
 
-        $dialect = $this->db->dialect(); // 'postgres' | 'mysql' | 'mariadb' ...
+        $mode = in_array($mode, ['wait','nowait','skip_locked'], true) ? $mode : 'wait';
+        $strength = in_array($strength, ['update','share'], true) ? $strength : 'update';
+
+        $dialect = $this->db->dialect()->value; // 'postgres' | 'mysql' | 'mariadb'
         $for = 'FOR UPDATE';
         if ($strength === 'share') {
-            if ($dialect === 'postgres' || $dialect === 'mysql') { $for = 'FOR SHARE'; }
-            else { $for = 'LOCK IN SHARE MODE'; } // legacy MySQL/MariaDB
+            if (in_array($dialect, ['postgres','mysql','mariadb'], true)) { $for = 'FOR SHARE'; }
+            else { $for = 'LOCK IN SHARE MODE'; }
         }
         $sql .= ' ' . $for . LockMode::compile($this->db, $mode);
         $row = $this->db->fetch($sql, $params);
@@ -441,23 +542,40 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
 
     // --- Keyset / seek pagination -------------------------------------------
 
-    public function paginateBySeek($criteria, array $order, ?array $cursor, int $limit): array {
-        if (!$criteria instanceof Criteria) throw new \InvalidArgumentException('Expected ' . Criteria::class);
+    /**
+     * @param array{col?:string,dir?:string,pk?:string,nullsLast?:bool} $order
+     * @param array{colValue:mixed,pkValue:mixed}|null $cursor
+     * @return array{0:array<int,array<string,mixed>>,1:array{colValue:mixed,pkValue:mixed}|null}
+     */
+    public function paginateBySeek(object $criteria, array $order, ?array $cursor, int $limit): array {
+        if (!$criteria instanceof Criteria) {
+            throw new \InvalidArgumentException('Expected ' . Criteria::class);
+        }
 
         [$where, $params, /*$orderIgnored*/, /*$lim*/, /*$off*/, $joins] = $criteria->toSql(true);
+        $baseWhere = '(' . $where . ') AND ' . $this->softGuard('t');
+
+        $col = (string)($order['col'] ?? Definitions::pk());
+        $col = $col !== '' ? $col : Definitions::pk();
+        $dir = strtolower((string)($order['dir'] ?? 'desc'));
+        $dir = in_array($dir, ['asc','desc'], true) ? $dir : 'desc';
+        $pk  = (string)($order['pk'] ?? Definitions::pk());
+        $pk  = $pk !== '' ? $pk : Definitions::pk();
         $orderSpec = [
-            'col' => $order['col'],
-            'dir' => strtolower($order['dir'] ?? 'desc'),
-            'pk'  => $order['pk'],
+            'col' => $col,
+            'dir' => $dir,
+            'pk'  => $pk,
         ];
+
+        $view = (string)Definitions::contractView();
+        if ($view === '') { throw new \InvalidArgumentException('contractView() must not be empty'); }
 
         return KeysetPaginator::paginate(
             $this->db,
-            Definitions::contractView(),
-            $where,
-            $params,
+            $view,
             $joins,
-            $this->softGuard('t'),
+            $baseWhere,
+            $params,
             $orderSpec,
             $cursor,
             $limit
@@ -475,9 +593,7 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
     
     /** @return array<string,mixed>|\BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto|null */
     public function getByEventKey(string $eventKey, bool $asDto = false): array|\BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto|null {
-        $row = $this->getByUnique([ 'event_key' => $eventKey ]);
-        if (!$asDto || !$row) return $row;
-        return \BlackCat\Database\Packages\EventOutbox\Mapper\EventOutboxDtoMapper::fromRow($row);
+        return $this->getByUnique([ 'event_key' => $eventKey ], $asDto);
     }
     public function existsByEventKey(string $eventKey): bool {
         $where = 't.' . Ident::q($this->db, 'event_key') . ' = :uniq_event_key';
@@ -485,8 +601,9 @@ final class EventOutboxRepository implements RepoContract, KeysetRepoContract
     }
     /** @return int|string|null */
     public function getIdByEventKey(string $eventKey) {
-        $row = $this->getByEventKey($eventKey);
-        return $row ? ($row['id'] ?? null) : null;
+        $row = $this->getByEventKey($eventKey, false);
+        if (!is_array($row)) { return null; }
+        return $row['id'] ?? null;
     }
 
 }

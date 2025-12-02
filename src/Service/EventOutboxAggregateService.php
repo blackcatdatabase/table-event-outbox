@@ -4,10 +4,7 @@ declare(strict_types=1);
 namespace BlackCat\Database\Packages\EventOutbox\Service;
 
 use BlackCat\Core\Database;
-use BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto;
-use BlackCat\Database\Packages\EventOutbox\Mapper\EventOutboxDtoMapper;
 use BlackCat\Database\Packages\EventOutbox\Repository\EventOutboxRepository;
-
 use BlackCat\Database\Support\ServiceHelpers;
 use BlackCat\Database\Contracts\ContractRepository as RepoContract;
 
@@ -18,7 +15,7 @@ use BlackCat\Database\Contracts\ContractRepository as RepoContract;
  */
 final class EventOutboxAggregateService
 {
-    use ServiceHelpers;
+use ServiceHelpers;
 
     /** @var array<string,object> */
     private readonly array $repositories;
@@ -32,6 +29,7 @@ final class EventOutboxAggregateService
 ];
     }
 
+    /** @phpstan-ignore-next-line exposed for generated aggregate methods */
     private function repo(string $alias): RepoContract
     {
         if (!isset($this->repositories[$alias])) {
@@ -71,14 +69,14 @@ final class EventOutboxAggregateService
                 }
                 $row = ($num >= 2) ? $locker($id, $mode) : $locker($id);
             } catch (\Throwable) {
-                // Best-effort fallback
-                $row = is_callable($locker) ? $locker($id) : null;
+                // Best-effort fallback: treat as not found / locked elsewhere
+                $row = null;
             }
 
             if ($mode === 'skip_locked' && $row === null) {
                 return null; // respect skip_locked - no record currently available
             }
-            if (!$row) {
+            if ($row === null) {
                 $idStr = is_array($id) ? json_encode($id, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : (string)$id;
                 throw new \BlackCat\Database\Packages\EventOutbox\ModuleException("Record {$idStr} not found for locking.");
             }
@@ -86,8 +84,8 @@ final class EventOutboxAggregateService
         });
     }
 
-    public function withAdvisoryLock(string $key, callable $fn): mixed {
-        return $this->withLock($this->db(), $key, fn() => $fn($this->db()));
+    public function withAdvisoryLock(string $key, callable $fn, int $timeoutSec = 10): mixed {
+        return $this->withLock($key, $timeoutSec, fn() => $fn($this->db()));
     }
 
     /** Attempt a lock with SKIP LOCKED; returns null when the row is locked instead of throwing. */
@@ -96,5 +94,5 @@ final class EventOutboxAggregateService
         return $this->withRowLock($locker, $id, $fetch, 'skip_locked');
     }
 
-
+    
 }
