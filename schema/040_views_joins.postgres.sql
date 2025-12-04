@@ -16,24 +16,22 @@ ORDER BY pending DESC NULLS LAST, failed DESC;
 
 -- Auto-generated from joins-postgres.yaml (map@85230ed)
 -- engine: postgres
--- view:   event_outbox_throughput_hourly
+-- view:   event_outbox_due
 
--- Hourly throughput for outbox/inbox
-CREATE OR REPLACE VIEW vw_event_throughput_hourly AS
-WITH o AS (
-  SELECT date_trunc('hour', created_at) AS ts, COUNT(*) AS outbox_cnt
-  FROM event_outbox GROUP BY 1
-),
-i AS (
-  SELECT date_trunc('hour', received_at) AS ts, COUNT(*) AS inbox_cnt
-  FROM event_inbox GROUP BY 1
-)
+-- Pending/due outbox messages with lag
+CREATE OR REPLACE VIEW vw_event_outbox_due AS
 SELECT
-  COALESCE(o.ts, i.ts) AS hour_ts,
-  COALESCE(outbox_cnt,0) AS outbox_cnt,
-  COALESCE(inbox_cnt,0)  AS inbox_cnt
-FROM o FULL JOIN i ON o.ts = i.ts
-ORDER BY hour_ts DESC;
+  eo.id,
+  eo.event_type,
+  eo.status,
+  eo.attempts,
+  eo.created_at,
+  eo.next_attempt_at,
+  EXTRACT(EPOCH FROM (now() - eo.created_at)) AS age_sec,
+  EXTRACT(EPOCH FROM (now() - COALESCE(eo.next_attempt_at, eo.created_at))) AS since_next_sec
+FROM event_outbox eo
+WHERE eo.status IN ($$pending$$,$$failed$$)
+  AND (eo.next_attempt_at IS NULL OR eo.next_attempt_at <= now());
 
 
 -- Auto-generated from joins-postgres.yaml (map@85230ed)
@@ -86,20 +84,22 @@ GROUP BY event_type;
 
 -- Auto-generated from joins-postgres.yaml (map@85230ed)
 -- engine: postgres
--- view:   event_outbox_due
+-- view:   event_outbox_throughput_hourly
 
--- Pending/due outbox messages with lag
-CREATE OR REPLACE VIEW vw_event_outbox_due AS
+-- Hourly throughput for outbox/inbox
+CREATE OR REPLACE VIEW vw_event_throughput_hourly AS
+WITH o AS (
+  SELECT date_trunc('hour', created_at) AS ts, COUNT(*) AS outbox_cnt
+  FROM event_outbox GROUP BY 1
+),
+i AS (
+  SELECT date_trunc('hour', received_at) AS ts, COUNT(*) AS inbox_cnt
+  FROM event_inbox GROUP BY 1
+)
 SELECT
-  eo.id,
-  eo.event_type,
-  eo.status,
-  eo.attempts,
-  eo.created_at,
-  eo.next_attempt_at,
-  EXTRACT(EPOCH FROM (now() - eo.created_at)) AS age_sec,
-  EXTRACT(EPOCH FROM (now() - COALESCE(eo.next_attempt_at, eo.created_at))) AS since_next_sec
-FROM event_outbox eo
-WHERE eo.status IN ($$pending$$,$$failed$$)
-  AND (eo.next_attempt_at IS NULL OR eo.next_attempt_at <= now());
+  COALESCE(o.ts, i.ts) AS hour_ts,
+  COALESCE(outbox_cnt,0) AS outbox_cnt,
+  COALESCE(inbox_cnt,0)  AS inbox_cnt
+FROM o FULL JOIN i ON o.ts = i.ts
+ORDER BY hour_ts DESC;
 
