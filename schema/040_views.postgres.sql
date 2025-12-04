@@ -1,4 +1,4 @@
--- Auto-generated from schema-views-postgres.yaml (map@4ae85c5)
+-- Auto-generated from schema-views-postgres.yaml (map@74ce4f4)
 -- engine: postgres
 -- table:  event_outbox
 
