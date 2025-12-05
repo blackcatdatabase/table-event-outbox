@@ -1,21 +1,5 @@
 -- Auto-generated from joins-postgres.yaml (map@85230ed)
 -- engine: postgres
--- view:   event_outbox_backlog_by_node
-
--- Pending outbox backlog per producer node/channel
-CREATE OR REPLACE VIEW vw_sync_backlog_by_node AS
-SELECT
-  COALESCE(producer_node, $$(unknown)$$) AS producer_node,
-  event_type,
-  COUNT(*) FILTER (WHERE status = $$pending$$) AS pending,
-  COUNT(*) FILTER (WHERE status = $$failed$$)  AS failed,
-  COUNT(*) AS total
-FROM event_outbox
-GROUP BY COALESCE(producer_node, $$(unknown)$$), event_type
-ORDER BY pending DESC NULLS LAST, failed DESC;
-
--- Auto-generated from joins-postgres.yaml (map@85230ed)
--- engine: postgres
 -- view:   event_outbox_due
 
 -- Pending/due outbox messages with lag
@@ -32,6 +16,27 @@ SELECT
 FROM event_outbox eo
 WHERE eo.status IN ($$pending$$,$$failed$$)
   AND (eo.next_attempt_at IS NULL OR eo.next_attempt_at <= now());
+
+-- Auto-generated from joins-postgres.yaml (map@85230ed)
+-- engine: postgres
+-- view:   event_outbox_metrics
+
+-- Aggregated metrics for [event_outbox]
+CREATE OR REPLACE VIEW vw_event_outbox_metrics AS
+SELECT
+  event_type,
+  COUNT(*)                                AS total,
+  COUNT(*) FILTER (WHERE status='pending') AS pending,
+  COUNT(*) FILTER (WHERE status='sent')    AS sent,
+  COUNT(*) FILTER (WHERE status='failed')  AS failed,
+  AVG(EXTRACT(EPOCH FROM (now() - created_at))) AS avg_created_lag_sec,
+  PERCENTILE_DISC(0.50) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (now()-created_at))) AS p50_created_lag_sec,
+  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (now()-created_at))) AS p95_created_lag_sec,
+  AVG(attempts)                           AS avg_attempts,
+  MAX(attempts)                           AS max_attempts,
+  COUNT(*) FILTER (WHERE status IN ('pending','failed') AND (next_attempt_at IS NULL OR next_attempt_at <= now())) AS due_now
+FROM event_outbox
+GROUP BY event_type;
 
 
 -- Auto-generated from joins-postgres.yaml (map@85230ed)
@@ -62,28 +67,6 @@ WHERE rn = 1;
 
 -- Auto-generated from joins-postgres.yaml (map@85230ed)
 -- engine: postgres
--- view:   event_outbox_metrics
-
--- Aggregated metrics for [event_outbox]
-CREATE OR REPLACE VIEW vw_event_outbox_metrics AS
-SELECT
-  event_type,
-  COUNT(*)                                AS total,
-  COUNT(*) FILTER (WHERE status='pending') AS pending,
-  COUNT(*) FILTER (WHERE status='sent')    AS sent,
-  COUNT(*) FILTER (WHERE status='failed')  AS failed,
-  AVG(EXTRACT(EPOCH FROM (now() - created_at))) AS avg_created_lag_sec,
-  PERCENTILE_DISC(0.50) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (now()-created_at))) AS p50_created_lag_sec,
-  PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (now()-created_at))) AS p95_created_lag_sec,
-  AVG(attempts)                           AS avg_attempts,
-  MAX(attempts)                           AS max_attempts,
-  COUNT(*) FILTER (WHERE status IN ('pending','failed') AND (next_attempt_at IS NULL OR next_attempt_at <= now())) AS due_now
-FROM event_outbox
-GROUP BY event_type;
-
-
--- Auto-generated from joins-postgres.yaml (map@85230ed)
--- engine: postgres
 -- view:   event_outbox_throughput_hourly
 
 -- Hourly throughput for outbox/inbox
@@ -102,4 +85,21 @@ SELECT
   COALESCE(inbox_cnt,0)  AS inbox_cnt
 FROM o FULL JOIN i ON o.ts = i.ts
 ORDER BY hour_ts DESC;
+
+
+-- Auto-generated from joins-postgres.yaml (map@85230ed)
+-- engine: postgres
+-- view:   event_outbox_backlog_by_node
+
+-- Pending outbox backlog per producer node/channel
+CREATE OR REPLACE VIEW vw_sync_backlog_by_node AS
+SELECT
+  COALESCE(producer_node, $$(unknown)$$) AS producer_node,
+  event_type,
+  COUNT(*) FILTER (WHERE status = $$pending$$) AS pending,
+  COUNT(*) FILTER (WHERE status = $$failed$$)  AS failed,
+  COUNT(*) AS total
+FROM event_outbox
+GROUP BY COALESCE(producer_node, $$(unknown)$$), event_type
+ORDER BY pending DESC NULLS LAST, failed DESC;
 
