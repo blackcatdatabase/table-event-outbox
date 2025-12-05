@@ -18,6 +18,31 @@ WHERE eo.status IN ('pending','failed')
 
 -- Auto-generated from joins-mysql.yaml (map@85230ed)
 -- engine: mysql
+-- view:   event_outbox_latency
+
+CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_outbox_latency AS
+SELECT
+  ranked.event_type,
+  ranked.processed,
+  ranked.avg_latency_sec,
+  ranked.max_latency_sec
+FROM (
+  SELECT
+    eo.event_type,
+    COUNT(*) OVER (PARTITION BY eo.event_type) AS processed,
+    AVG(TIMESTAMPDIFF(SECOND, eo.created_at, eo.processed_at))
+      OVER (PARTITION BY eo.event_type) AS avg_latency_sec,
+    MAX(TIMESTAMPDIFF(SECOND, eo.created_at, eo.processed_at))
+      OVER (PARTITION BY eo.event_type) AS max_latency_sec,
+    ROW_NUMBER() OVER (PARTITION BY eo.event_type ORDER BY eo.event_type) AS rn
+  FROM event_outbox eo
+  WHERE eo.processed_at IS NOT NULL
+) ranked
+WHERE ranked.rn = 1;
+
+
+-- Auto-generated from joins-mysql.yaml (map@85230ed)
+-- engine: mysql
 -- view:   event_outbox_metrics
 
 CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_outbox_metrics AS
@@ -70,47 +95,6 @@ LEFT JOIN pcts p ON p.event_type = b.event_type;
 
 -- Auto-generated from joins-mysql.yaml (map@85230ed)
 -- engine: mysql
--- view:   sync_backlog_by_node
-
-CREATE OR REPLACE ALGORITHM=TEMPTABLE SQL SECURITY INVOKER VIEW vw_sync_backlog_by_node AS
-SELECT
-  COALESCE(producer_node, '(unknown)') AS producer_node,
-  event_type,
-  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
-  SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)  AS failed,
-  COUNT(*) AS total
-FROM event_outbox
-GROUP BY COALESCE(producer_node, '(unknown)'), event_type
-ORDER BY pending DESC, failed DESC;
-
-
--- Auto-generated from joins-mysql.yaml (map@85230ed)
--- engine: mysql
--- view:   event_outbox_latency
-
-CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_outbox_latency AS
-SELECT
-  ranked.event_type,
-  ranked.processed,
-  ranked.avg_latency_sec,
-  ranked.max_latency_sec
-FROM (
-  SELECT
-    eo.event_type,
-    COUNT(*) OVER (PARTITION BY eo.event_type) AS processed,
-    AVG(TIMESTAMPDIFF(SECOND, eo.created_at, eo.processed_at))
-      OVER (PARTITION BY eo.event_type) AS avg_latency_sec,
-    MAX(TIMESTAMPDIFF(SECOND, eo.created_at, eo.processed_at))
-      OVER (PARTITION BY eo.event_type) AS max_latency_sec,
-    ROW_NUMBER() OVER (PARTITION BY eo.event_type ORDER BY eo.event_type) AS rn
-  FROM event_outbox eo
-  WHERE eo.processed_at IS NOT NULL
-) ranked
-WHERE ranked.rn = 1;
-
-
--- Auto-generated from joins-mysql.yaml (map@85230ed)
--- engine: mysql
 -- view:   event_throughput_hourly
 
 CREATE OR REPLACE ALGORITHM=TEMPTABLE SQL SECURITY INVOKER VIEW vw_event_throughput_hourly AS
@@ -134,4 +118,20 @@ FROM (
   GROUP BY hour_ts
 ) t
 GROUP BY hour_ts;
+
+
+-- Auto-generated from joins-mysql.yaml (map@85230ed)
+-- engine: mysql
+-- view:   sync_backlog_by_node
+
+CREATE OR REPLACE ALGORITHM=TEMPTABLE SQL SECURITY INVOKER VIEW vw_sync_backlog_by_node AS
+SELECT
+  COALESCE(producer_node, '(unknown)') AS producer_node,
+  event_type,
+  SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending,
+  SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END)  AS failed,
+  COUNT(*) AS total
+FROM event_outbox
+GROUP BY COALESCE(producer_node, '(unknown)'), event_type
+ORDER BY pending DESC, failed DESC;
 
