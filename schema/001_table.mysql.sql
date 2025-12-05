@@ -1,4 +1,4 @@
--- Auto-generated from schema-map-mysql.yaml (map@74ce4f4)
+-- Auto-generated from schema-map-mysql.yaml (map@sha1:5E62933580349BE7C623D119AC9D1301A62F03EF)
 -- engine: mysql
 -- table:  event_outbox
 

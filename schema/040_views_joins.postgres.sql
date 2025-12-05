@@ -1,4 +1,4 @@
--- Auto-generated from joins-postgres.yaml (map@85230ed)
+-- Auto-generated from joins-postgres.yaml (map@sha1:29CF395A3A4C8964482083733F8E613ABFBEF5CC)
 -- engine: postgres
 -- view:   event_outbox_due
 
@@ -17,7 +17,7 @@ FROM event_outbox eo
 WHERE eo.status IN ($$pending$$,$$failed$$)
   AND (eo.next_attempt_at IS NULL OR eo.next_attempt_at <= now());
 
--- Auto-generated from joins-postgres.yaml (map@85230ed)
+-- Auto-generated from joins-postgres.yaml (map@sha1:29CF395A3A4C8964482083733F8E613ABFBEF5CC)
 -- engine: postgres
 -- view:   event_outbox_latency
 
@@ -43,7 +43,7 @@ FROM (
 WHERE rn = 1;
 
 
--- Auto-generated from joins-postgres.yaml (map@85230ed)
+-- Auto-generated from joins-postgres.yaml (map@sha1:29CF395A3A4C8964482083733F8E613ABFBEF5CC)
 -- engine: postgres
 -- view:   event_outbox_metrics
 
@@ -65,7 +65,7 @@ FROM event_outbox
 GROUP BY event_type;
 
 
--- Auto-generated from joins-postgres.yaml (map@85230ed)
+-- Auto-generated from joins-postgres.yaml (map@sha1:29CF395A3A4C8964482083733F8E613ABFBEF5CC)
 -- engine: postgres
 -- view:   event_throughput_hourly
 
@@ -87,7 +87,7 @@ FROM o FULL JOIN i ON o.ts = i.ts
 ORDER BY hour_ts DESC;
 
 
--- Auto-generated from joins-postgres.yaml (map@85230ed)
+-- Auto-generated from joins-postgres.yaml (map@sha1:29CF395A3A4C8964482083733F8E613ABFBEF5CC)
 -- engine: postgres
 -- view:   sync_backlog_by_node
 
