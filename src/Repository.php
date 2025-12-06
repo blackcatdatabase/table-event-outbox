@@ -3,9 +3,11 @@ declare(strict_types=1);
 
 namespace BlackCat\Database\Packages\EventOutbox;
 
-use BlackCat\Core\Database as Database;
-use BlackCat\Database\Packages\EventOutbox\Repository\EventOutboxRepository;
+use BlackCat\Core\Database as Database;              // e.g. BlackCat\Core\Database
 use BlackCat\Database\Packages\EventOutbox\Criteria;
+use BlackCat\Database\Packages\EventOutbox\Repository\EventOutboxRepositoryInterface;
+use BlackCat\Database\Packages\EventOutbox\Repository\EventOutboxRepository as GeneratedRepository;
+use BlackCat\Database\Contracts\ContractRepository as RepoContract;
 use BlackCat\Database\Contracts\KeysetRepository as KeysetRepoContract;
 
 /**
@@ -13,11 +15,30 @@ use BlackCat\Database\Contracts\KeysetRepository as KeysetRepoContract;
  */
 final class Repository
 {
-    private EventOutboxRepository $repo;
+  private EventOutboxRepositoryInterface $repo;
 
-    public function __construct(private Database $db)
+  public function __construct(private Database $db)
+  {
+      $this->repo = new GeneratedRepository($db);
+  }
+
+    /**
+     * @internal test helper to swap the underlying repository (testing only).
+     * Accepts any ContractRepository implementing the methods this facade forwards.
+     */
+    public function _setRepositoryForTests(RepoContract $repo): void
     {
-        $this->repo = new EventOutboxRepository($db);
+        // Methods this facade forwards and relies on
+        foreach (['paginateBySeek','paginate','getById','getByUnique','findById','exists','count'] as $method) {
+            if (!method_exists($repo, $method)) {
+                throw new \InvalidArgumentException("Test repo must implement {$method}().");
+            }
+        }
+        if (!$repo instanceof EventOutboxRepositoryInterface) {
+            // Allow any repo that conforms to the interface even if not generated
+            throw new \InvalidArgumentException('Expected EventOutboxRepositoryInterface');
+        }
+        $this->repo = $repo;
     }
 
     /** Convenience Criteria factory bound to this Database (handles dialect and optional tenancy). */
@@ -31,109 +52,79 @@ final class Repository
     public function insert(array $row): void { $this->repo->insert($row); }
     public function insertMany(array $rows): void { $this->repo->insertMany($rows); }
 
-    public function upsert(array $row): void
-    {
-        if (method_exists($this->repo, 'upsert')) { $this->repo->upsert($row); }
-        else { $this->repo->insert($row); }
-    }
-
-    /** Forwarder: upsert by business keys if the repository allows it, otherwise fallback. */
+    public function upsert(array $row): void { $this->repo->upsert($row); }
     public function upsertByKeys(array $row, array $keys, array $updateColumns = []): void
     {
         if (method_exists($this->repo, 'upsertByKeys')) {
             $this->repo->upsertByKeys($row, $keys, $updateColumns);
-        } elseif (method_exists($this->repo, 'upsert')) {
-            $this->repo->upsert($row);
-        } else {
-            $this->repo->insert($row);
+            return;
         }
+        $this->repo->upsert($row);
     }
-
     public function upsertMany(array $rows): void
     {
         if (method_exists($this->repo, 'upsertMany')) { $this->repo->upsertMany($rows); }
         else { foreach ($rows as $r) { $this->upsert((array)$r); } }
     }
 
-    // --- Update/Delete/Restore ----------------------------------------------
-
-    public function updateById(int|string|array $id, array $row): int { return $this->repo->updateById($id, $row); }
-    public function deleteById(int|string|array $id): int { return $this->repo->deleteById($id); }
-    public function restoreById(int|string|array $id): int { return $this->repo->restoreById($id); }
-
-    // --- Read/Exists/Count ---------------------------------------------------
-
-    public function findById(int|string|array $id): ?array { return $this->repo->findById($id); }
-    public function exists(string $whereSql = '1=1', array $params = []): bool { return $this->repo->exists($whereSql, $params); }
-    public function count(string $whereSql = '1=1', array $params = []): int { return $this->repo->count($whereSql, $params); }
-
-    /** @return array{items:array<int,array>,total:int,page:int,perPage:int} */
-    public function paginate(Criteria $c): array { return $this->repo->paginate($c); }
-
-    /**
-     * Keyset/seek pagination:
-     * - delegates when the repository implements KeysetRepository
-     * - otherwise falls back to the first page of classic pagination sized by $limit
-     *
-     * @param array{col:string,dir:'asc'|'desc',pk:string} $order
-     * @param array{colValue:mixed,pkValue:mixed}|null $cursor
-     * @return array{0:array<int,array<string,mixed>>,1:array{colValue:mixed,pkValue:mixed}|null}
-     */
-    public function paginateBySeek(Criteria $c, array $order, ?array $cursor, int $limit): array
-    {
-        if ($this->repo instanceof KeysetRepoContract) {
-            return $this->repo->paginateBySeek($c, $order, $cursor, $limit);
-        }
-        $c2 = clone $c;
-        $c2->page(1)->perPage(max(1, $limit));
-        $page = $this->repo->paginate($c2);
-        return [$page['items'] ?? [], null];
-    }
-
-    /** @return array<int,array<string,mixed>> */
-    public function findAllByIds(array $ids): array { return $this->repo->findAllByIds($ids); }
-    
-    /** @return array<string,mixed>|\BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto|null */
-    public function getByUnique(array $keys, bool $asDto = false): array|\BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto|null
-    {
-        return $this->repo->getByUnique($keys, $asDto);
-    }
-
-    /** @return array<string,mixed>|\BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto|null */
-    public function getById(int|string|array $id, bool $asDto = false): array|\BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto|null
-    {
-        return $this->repo->getById($id, $asDto);
-    }
-
-    /** @param 'wait'|'nowait'|'skip_locked' $mode  @param 'update'|'share' $strength */
-    public function lockById(int|string|array $id, string $mode = 'wait', string $strength = 'update'): ?array {
-        return $this->repo->lockById($id, $mode, $strength);
-    }
-
-        /** Upsert with revive (sets deleted_at=NULL when the table supports soft-delete). */
     public function upsertRevive(array $row): void
     {
         if (method_exists($this->repo, 'upsertRevive')) { $this->repo->upsertRevive($row); }
         else { $this->repo->upsert($row); }
     }
-
-    /** Upsert by keys with revive behavior. */
     public function upsertByKeysRevive(array $row, array $keys, array $updateColumns = []): void
     {
         if (method_exists($this->repo, 'upsertByKeysRevive')) {
             $this->repo->upsertByKeysRevive($row, $keys, $updateColumns);
-        } elseif (method_exists($this->repo, 'upsertByKeys')) {
-            $this->repo->upsertByKeys($row, $keys, $updateColumns);
-        } elseif (method_exists($this->repo, 'upsert')) {
-            $this->repo->upsert($row);
-        } else {
-            $this->repo->insert($row);
+            return;
         }
+        $this->upsertByKeys($row, $keys, $updateColumns);
     }
-
     public function upsertManyRevive(array $rows): void
     {
         if (method_exists($this->repo, 'upsertManyRevive')) { $this->repo->upsertManyRevive($rows); }
         else { foreach ($rows as $r) { $this->upsertRevive((array)$r); } }
+    }
+
+    // --- Update/Delete/Restore ----------------------------------------------
+    public function updateById(int|string|array $id, array $row): int { return $this->repo->updateById($id, $row); }
+    public function deleteById(int|string|array $id): int { return $this->repo->deleteById($id); }
+    public function restoreById(int|string|array $id): int { return $this->repo->restoreById($id); }
+
+    // --- Read/Exists/Count ---------------------------------------------------
+    public function findById(int|string|array $id): ?array { return $this->repo->findById($id); }
+    /** @param non-empty-string $whereSql */
+    public function exists(string $whereSql = '1=1', array $params = []): bool { return $this->repo->exists($whereSql ?: '1=1', $params); }
+    /** @param non-empty-string $whereSql */
+    public function count(string $whereSql = '1=1', array $params = []): int { return $this->repo->count($whereSql ?: '1=1', $params); }
+    public function findAllByIds(array $ids): array { return $this->repo->findAllByIds($ids); }
+    public function getByUnique(array $keys, bool $asDto = false): array|\BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto|null { return $this->repo->getByUnique($keys, $asDto); }
+    public function getById(int|string|array $id, bool $asDto = false): array|\BlackCat\Database\Packages\EventOutbox\Dto\EventOutboxDto|null { return $this->repo->getById($id, $asDto); }
+
+    // --- Pagination / Lock ---------------------------------------------------
+    public function paginate(object $c): array {
+        if (!$c instanceof Criteria) {
+            throw new \InvalidArgumentException('Expected ' . Criteria::class);
+        }
+        return $this->repo->paginate($c);
+    }
+    /**
+     * @param array{col?:string,dir?:string,pk?:string,nullsLast?:bool} $order
+     * @param array{colValue:mixed,pkValue:mixed}|null $cursor
+     * @return array{0:array<int,array<string,mixed>>,1:array{colValue:mixed,pkValue:mixed}|null}
+     */
+    public function paginateBySeek(object $c, array $order, ?array $cursor, int $limit): array
+    {
+        if (!$c instanceof Criteria) {
+            throw new \InvalidArgumentException('Expected ' . Criteria::class);
+        }
+        return $this->repo->paginateBySeek($c, $order, $cursor, $limit);
+    }
+
+    /** @param 'wait'|'nowait'|'skip_locked' $mode  @param 'update'|'share' $strength */
+    public function lockById(int|string|array $id, string $mode = 'wait', string $strength = 'update'): ?array {
+        $mode = in_array($mode, ['wait','nowait','skip_locked'], true) ? $mode : 'wait';
+        $strength = in_array($strength, ['update','share'], true) ? $strength : 'update';
+        return $this->repo->lockById($id, $mode, $strength);
     }
 }

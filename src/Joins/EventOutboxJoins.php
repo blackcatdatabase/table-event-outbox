@@ -17,16 +17,6 @@ use BlackCat\Core\Database as Database;
  */
 final class EventOutboxJoins {
 
-    /** @internal */
-    private function qi(?Database $db, string $ident): string {
-        return $db ? Ident::qi($db, $ident) : $ident;
-    }
-
-    /** @internal */
-    private function q(?Database $db, string $ident): string {
-        return $db ? Ident::q($db, $ident) : $ident;
-    }
-
     /** @internal Short SQL alias validation (guards against invalid input). */
     private function assertAlias(string $s): string {
         if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $s)) {
@@ -36,6 +26,7 @@ final class EventOutboxJoins {
     }
 
     /** @internal Validate both aliases and ensure they differ. */
+    /** @phpstan-ignore-next-line unused helper (present even when no joins are emitted) */
     private function assertAliasPair(string $alias, string $as): array {
         $alias = $this->assertAlias($alias);
         $as    = $this->assertAlias($as);

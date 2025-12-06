@@ -5,11 +5,11 @@ namespace BlackCat\Database\Packages\EventOutbox\Service;
 
 use BlackCat\Core\Database;
 use BlackCat\Core\Database\QueryCache;
-use BlackCat\Database\Services\GenericCrudService as BaseCrud;
 use BlackCat\Database\Contracts\ContractRepository as RepoContract;
-use BlackCat\Database\Packages\EventOutbox\Definitions;
-use BlackCat\Database\Packages\EventOutbox\Criteria;
+use BlackCat\Database\Services\GenericCrudService as BaseCrud;
 use BlackCat\Database\Support\OperationResult;
+use BlackCat\Database\Packages\EventOutbox\Criteria;
+use BlackCat\Database\Packages\EventOutbox\Definitions;
 
 /**
  * Local "thin" CRUD service:
@@ -22,8 +22,11 @@ use BlackCat\Database\Support\OperationResult;
  */
 final class GenericCrudService extends BaseCrud
 {
+    /**
+     * @param RepoContract&\BlackCat\Database\Services\GenericCrudRepositoryShape $repo
+     */
     public function __construct(
-        private Database $db,
+        protected Database $db,
         RepoContract $repo,
         ?QueryCache $qcache = null
     ) {
@@ -37,6 +40,12 @@ final class GenericCrudService extends BaseCrud
             : null;
 
         parent::__construct($db, $repo, $pk, $qcache, $cacheNs, $seqGuess, $version);
+    }
+
+    /** @return RepoContract&\BlackCat\Database\Services\GenericCrudRepositoryShape */
+    private function repo(): RepoContract
+    {
+        return $this->repository;
     }
 
     /**
@@ -85,7 +94,7 @@ final class GenericCrudService extends BaseCrud
     public function createMany(array $rows): OperationResult
     {
         try {
-            $this->repo->insertMany($rows);
+            $this->repository->insertMany($rows);
             return OperationResult::ok(['affected' => count($rows)]);
         } catch (\Throwable $e) {
             return OperationResult::fail($e->getMessage());
@@ -95,17 +104,14 @@ final class GenericCrudService extends BaseCrud
     /** Batch upsert with a best-effort fallback to insert. */
     public function upsertMany(array $rows): OperationResult
     {
+        $repo = $this->repo();
         try {
-            if (method_exists($this->repo, 'upsertMany')) {
-                $this->repo->upsertMany($rows);
+            if (method_exists($repo, 'upsertMany')) {
+                $repo->upsertMany($rows);
+            } elseif (method_exists($repo, 'upsert')) {
+                foreach ($rows as $r) { $repo->upsert((array)$r); }
             } else {
-                foreach ($rows as $r) {
-                    if (method_exists($this->repo, 'upsert')) {
-                        $this->repo->upsert((array)$r);
-                    } else {
-                        $this->repo->insert((array)$r);
-                    }
-                }
+                $repo->insertMany($rows);
             }
             return OperationResult::ok(['affected' => count($rows)]);
         } catch (\Throwable $e) {
@@ -121,7 +127,7 @@ final class GenericCrudService extends BaseCrud
 
     public function touch(int|string|array $id): OperationResult
     {
-        $n = $this->repo->updateById($id, []); // version bump handled inside the repository (version/updated_at)
+        $n = $this->repository->updateById($id, []); // version bump handled inside the repository (version/updated_at)
         return $n > 0 ? OperationResult::ok(['affected' => $n]) : OperationResult::fail('Not found');
     }
 
@@ -161,25 +167,26 @@ final class GenericCrudService extends BaseCrud
      * Execute work within a single transaction using a row lock (SELECT ... FOR UPDATE).
      * $fn = function(array $lockedRow, Database $db): mixed
      */
-    public function withRowLock(int|string|array $id, callable $fn): mixed
+    public function withRowLock(int|string|array $id, callable $fn, string $mode = 'wait'): mixed
     {
-        return parent::withRowLock($id, $fn);
+        return parent::withRowLock($id, $fn, $mode);
     }
 
-    public function withAdvisoryLock(string $key, callable $fn): mixed {
-        return $this->withLock($this->db, $key, fn() => $fn($this->db));
+    public function withAdvisoryLock(string $key, callable $fn, int $timeoutSec = 10): mixed {
+        return $this->withLock($key, $timeoutSec, fn() => $fn($this->db));
     }
 
     /** Upsert that revives soft-deleted rows; returns OperationResult. */
     public function upsertRevive(array $row): OperationResult
     {
+        $repo = $this->repo();
         try {
-            if (method_exists($this->repo, 'upsertRevive')) {
-                $this->repo->upsertRevive($row);
-            } elseif (method_exists($this->repo, 'upsert')) {
-                $this->repo->upsert($row);
+            if (method_exists($repo, 'upsertRevive')) {
+                $repo->upsertRevive($row);
+            } elseif (method_exists($repo, 'upsert')) {
+                $repo->upsert($row);
             } else {
-                $this->repo->insert($row);
+                $repo->insert($row);
             }
             return OperationResult::ok();
         } catch (\Throwable $e) {
@@ -190,15 +197,16 @@ final class GenericCrudService extends BaseCrud
     /** Batch variant with revive. */
     public function upsertManyRevive(array $rows): OperationResult
     {
+        $repo = $this->repo();
         try {
-            if (method_exists($this->repo, 'upsertManyRevive')) {
-                $this->repo->upsertManyRevive($rows);
+            if (method_exists($repo, 'upsertManyRevive')) {
+                $repo->upsertManyRevive($rows);
+            } elseif (method_exists($repo, 'upsertRevive')) {
+                foreach ($rows as $r) { $repo->upsertRevive((array)$r); }
+            } elseif (method_exists($repo, 'upsert')) {
+                foreach ($rows as $r) { $repo->upsert((array)$r); }
             } else {
-                foreach ($rows as $r) {
-                    if (method_exists($this->repo, 'upsertRevive')) { $this->repo->upsertRevive((array)$r); }
-                    elseif (method_exists($this->repo, 'upsert')) { $this->repo->upsert((array)$r); }
-                    else { $this->repo->insert((array)$r); }
-                }
+                $repo->insertMany($rows);
             }
             return OperationResult::ok(['affected' => count($rows)]);
         } catch (\Throwable $e) {

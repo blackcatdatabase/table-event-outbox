@@ -17,7 +17,7 @@ use BlackCat\Database\Support\DtoHydrator;
 final class EventOutboxDtoMapper
 {
     /** @var array<string,string> Column -> DTO property */
-    private const COL_TO_PROP = [ 'event_key' => 'eventKey', 'entity_table' => 'entityTable', 'entity_pk' => 'entityPk', 'event_type' => 'eventType', 'next_attempt_at' => 'nextAttemptAt', 'processed_at' => 'processedAt', 'producer_node' => 'producerNode', 'created_at' => 'createdAt' ];
+    private const COL_TO_PROP = [ 'id' => 'id', 'event_key' => 'eventKey', 'entity_table' => 'entityTable', 'entity_pk' => 'entityPk', 'event_type' => 'eventType', 'payload' => 'payload', 'status' => 'status', 'attempts' => 'attempts', 'next_attempt_at' => 'nextAttemptAt', 'processed_at' => 'processedAt', 'producer_node' => 'producerNode', 'created_at' => 'createdAt' ];
 
     /** @var string[] */
     private const BOOL_COLS   = [];
@@ -39,13 +39,8 @@ final class EventOutboxDtoMapper
 
     private static function tz(): DateTimeZone
     {
-        if (self::$tzObj instanceof DateTimeZone) {
-            return self::$tzObj;
-        }
-        try {
+        if (!(self::$tzObj instanceof DateTimeZone)) {
             self::$tzObj = new DateTimeZone(self::TZ);
-        } catch (\Throwable) {
-            self::$tzObj = new DateTimeZone('UTC');
         }
         return self::$tzObj;
     }
