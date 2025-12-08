@@ -1,84 +1,156 @@
 # 📦 Event Outbox
 
-![SQL](https://img.shields.io/badge/SQL-MySQL%208.0%2B-4479A1?logo=mysql&logoColor=white) ![License](https://img.shields.io/badge/license-BlackCat%20Proprietary-red) ![Status](https://img.shields.io/badge/status-stable-informational) ![Generated](https://img.shields.io/badge/generated-from%20schema--map-blue)
+> Auto-generated from [schema-map-postgres.yaml](https://github.com/blackcatacademy/blackcat-database/blob/main/scripts/schema/schema-map-postgres.yaml) (map@sha1:5221bb5c65d0fbe010594635f9efb6fc13c307b2). Do not edit manually.
+> Targets: PHP 8.3; MySQL 8.x / MariaDB 10.4; Postgres 15+.
 
-<!-- Auto-generated from schema-map-postgres.psd1 @ 62c9c93 (2025-11-20T21:38:11+01:00) -->
+![PHP](https://img.shields.io/badge/PHP-8.3-blueviolet) ![DB](https://img.shields.io/badge/DB-MySQL%20%7C%20MariaDB%20%7C%20Postgres-informational) ![License](https://img.shields.io/badge/license-BlackCat%20Proprietary-red) ![Status](https://img.shields.io/badge/status-stable-success)
 
-> Schema package for table **event_outbox** (repo: `event-outbox`).
+![Docs](https://img.shields.io/badge/Docs-ready-success) ![Changelog](https://img.shields.io/badge/Changelog-ok-success) ![Changelog%20freshness](https://img.shields.io/badge/Changelog%20freshness-fresh-success) ![Seeds](https://img.shields.io/badge/Seeds-missing-critical) ![Views](https://img.shields.io/badge/Views-ok-success) ![Lineage](https://img.shields.io/badge/Lineage-solo-critical) ![Drift](https://img.shields.io/badge/Drift-clean-success) ![Index%20coverage](https://img.shields.io/badge/Index%20coverage-ready-success) ![PII](https://img.shields.io/badge/PII-review-critical)
 
-## Files
-```
-schema/
-  001_table.sql
-  020_indexes.sql
-  # (no foreign keys declared in map)
-```
+✅ No engine drift detected
 
-## Quick apply
-```bash
-# Apply schema (Linux/macOS):
-mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" < schema/001_table.sql
-mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" "$DB_NAME" < schema/020_indexes.sql
-```
+<div style='margin:12px 0 18px;padding:14px 16px;border-radius:14px;background:linear-gradient(120deg,#0b1021 0%,#111827 40%,#312e81 100%);color:#e2e8f0;border:1px solid #1f2937;box-shadow:0 18px 55px rgba(49,46,129,0.35);'>
+<div style='font-weight:700;letter-spacing:0.4px;font-size:14px;'>Schema vibe</div>
+<div style='font-size:13px;opacity:0.95;'>Map: <a href='https://github.com/blackcatacademy/blackcat-database/blob/main/scripts/schema/schema-map-postgres.yaml' style='color:#a5b4fc;'>schema-map-postgres.yaml</a> · Docs: <a href='docs/definitions.md'>definitions</a> · Drift warnings: 0</div>
+<div style='font-size:13px;opacity:0.92;'>Lineage heat: 0 outbound / 0 inbound · ✅ No engine drift detected · Index coverage: ready · PII: 3 · Changelog: fresh (18 d)</div>
+</div>
 
-```powershell
-# Apply schema (Windows PowerShell):
-mysql -h $env:DB_HOST -u $env:DB_USER -p$env:DB_PASS $env:DB_NAME < schema/001_table.sql
-mysql -h $env:DB_HOST -u $env:DB_USER -p$env:DB_PASS $env:DB_NAME < schema/020_indexes.sql
-```
+## Quick Links
+- Schema map: [schema-map-postgres.yaml](https://github.com/blackcatacademy/blackcat-database/blob/main/scripts/schema/schema-map-postgres.yaml)
+- Pkg folder: [packages\event-outbox](https://github.com/blackcatacademy/blackcat-database/blob/main/packages\event-outbox)
+- Definitions: [docs/definitions.md](docs/definitions.md)
+- Engine differences: [docs/definitions.md#engine-differences](docs/definitions.md#engine-differences)
+- Changelog: [CHANGELOG.md](CHANGELOG.md)
 
-## Docker quickstart
-```bash
-# Spin up a throwaway MySQL and apply just this package:
-docker run --rm -e MYSQL_ROOT_PASSWORD=root -e MYSQL_DATABASE=app -p 3307:3306 -d mysql:8
-sleep 15
-mysql -h 127.0.0.1 -P 3307 -u root -proot app < schema/001_table.sql
-mysql -h 127.0.0.1 -P 3307 -u root -proot app < schema/020_indexes.sql
-```
-
-## Columns
-| Column | Type | Null | Default | Extra |
-|-------:|:-----|:----:|:--------|:------|
-| id | BIGINT | — | AS | PK |
-| event_key | CHAR(36) | NO | — |  |
-| entity_table | VARCHAR(64) | NO | — |  |
-| entity_pk | VARCHAR(64) | NO | — |  |
-| event_type | VARCHAR(100) | NO | — |  |
-| payload | JSONB | NO | — |  |
-| status | TEXT | NO | 'pending' |  |
-| attempts | INTEGER | NO | 0 |  |
-| next_attempt_at | TIMESTAMPTZ(6) | YES | — |  |
-| processed_at | TIMESTAMPTZ(6) | YES | — |  |
-| producer_node | VARCHAR(100) | YES | — |  |
-| created_at | TIMESTAMPTZ(6) | NO | CURRENT_TIMESTAMP(6) |  |
-
-## Relationships
-- No outgoing foreign keys.
-
+> ERD preview: auto-rendered from docs/definitions.md (no FK links detected; showing anchor).
 ```mermaid
-erDiagram
-  EVENT_OUTBOX {
-    INT id PK
-    VARCHAR event_key
-    VARCHAR entity_table
-    VARCHAR entity_pk
-    VARCHAR event_type
-    JSONB payload
-    VARCHAR status
-    INTEGER attempts
-    TIMESTAMPTZ next_attempt_at
-    TIMESTAMPTZ processed_at
-    VARCHAR producer_node
-    TIMESTAMPTZ created_at
-  }
+graph LR
+  %% Neon lineage view (auto-parsed from docs/definitions.md)
+  classDef center fill:#0b1021,stroke:#ff6b6b,stroke-width:3px,color:#fefefe;
+  classDef link fill:#0a1f33,stroke:#64dfdf,stroke-width:2px,color:#e8f7ff;
+  classDef accent fill:#1d1b4c,stroke:#a855f7,stroke-width:2px,color:#f5e1ff;
+  classDef inbound fill:#0f172a,stroke:#10b981,stroke-width:2px,color:#e2fcef;
+  event_outbox["event_outbox"]:::center
 ```
 
-## Indexes
-- 4 deferred index statement(s) in schema/020_indexes.sql.
+## Contents
+- [Quick Links](#quick-links)
+- [At a Glance](#at-a-glance)
+- [Summary](#summary)
+- [Relationship Graph](#relationship-graph)
+- [Engine Matrix](#engine-matrix)
+- [Engine Drift](#engine-drift)
+- [Constraints Snapshot](#constraints-snapshot)
+- [Compliance Notes](#compliance-notes)
+- [Schema Files](#schema-files)
+- [Views](#views)
+- [Seeds](#seeds)
+- [Usage](#usage)
+- [Quality Gates](#quality-gates)
+- [Regeneration](#regeneration)
 
-## Notes
-- Generated from the umbrella repository **blackcat-database** using `scripts/schema-map.psd1`.
-- To change the schema, update the map and re-run the generators.
+## At a Glance
+| Metric | Count |
+| --- | --- |
+| Columns | 14 |
+| Indexes | 6 |
+| Foreign keys | 0 |
+| Unique keys | 3 |
+| Outbound links (FK targets) | 0 |
+| Inbound links (tables depending on this) | 0 |
+| Views | 14 |
+| Seeds | 0 |
+| Drift warnings | 0 |
+| PII flags | 3 |
 
-## License
-Distributed under the **BlackCat Store Proprietary License v1.0**. See `LICENSE`.
+## Summary
+- Table: event_outbox
+- Schema files: 8
+- Views: 4
+- Seeds: 0
+- Docs: present
+- Changelog: present
+- Changelog freshness: fresh (18 days old; threshold 45)
+- Outbound FK targets: none
+- Inbound FK sources: none (from definitions)
+- Index coverage: ready
+- Engine targets: PHP 8.3; MySQL/MariaDB/Postgres
+
+## Relationship Graph
+_No foreign keys declared in docs/definitions.md (inbound or outbound)._
+
+## Engine Matrix
+| Engine | Support |
+| --- | --- |
+| mysql | ✅ schema(4)<br/>✅ views(2)<br/>⚠️ seeds |
+| postgres | ✅ schema(4)<br/>✅ views(2)<br/>⚠️ seeds |
+
+## Engine Drift
+_No engine differences detected._
+
+## Constraints Snapshot
+- `attempts` – default=0
+- `created_at` – default=CURRENT_TIMESTAMP(6)
+- `status` – default=pending, enum
+
+## Schema Files
+| File | Engine |
+| --- | --- |
+| [001_table.mysql.sql](schema/001_table.mysql.sql) | mysql |
+| [001_table.postgres.sql](schema/001_table.postgres.sql) | postgres |
+| [020_indexes.mysql.sql](schema/020_indexes.mysql.sql) | mysql |
+| [020_indexes.postgres.sql](schema/020_indexes.postgres.sql) | postgres |
+| [040_views_joins.mysql.sql](schema/040_views_joins.mysql.sql) | mysql |
+| [040_views_joins.postgres.sql](schema/040_views_joins.postgres.sql) | postgres |
+| [040_views.mysql.sql](schema/040_views.mysql.sql) | mysql |
+| [040_views.postgres.sql](schema/040_views.postgres.sql) | postgres |
+
+## Views
+| File | Engine | Source |
+| --- | --- | --- |
+| [040_views_joins.mysql.sql](schema/040_views_joins.mysql.sql) | mysql | package |
+| [040_views_joins.postgres.sql](schema/040_views_joins.postgres.sql) | postgres | package |
+| [040_views.mysql.sql](schema/040_views.mysql.sql) | mysql | package |
+| [040_views.postgres.sql](schema/040_views.postgres.sql) | postgres | package |
+
+## Seeds
+_No seed files found._
+
+## Compliance Notes
+> ⚠️ Potential PII/secret fields – review retention/encryption policies:
+- entity_pk (key)
+- event_key (token)
+- id (key)
+
+## Usage
+- Install/upgrade schema: pwsh -NoLogo -NoProfile -File scripts/schema-tools/Migrate-DryRun.ps1 -Package event-outbox -Apply
+- Split schema: pwsh -NoLogo -NoProfile -File scripts/schema-tools/Split-SchemaToPackages.ps1
+- Generate PHP DTO/Repo: pwsh -NoLogo -NoProfile -File scripts/schema-tools/Generate-PhpFromSchema.ps1 -SchemaDir scripts/schema -TemplatesRoot scripts/templates/php -ModulesRoot packages -NameResolution detect -Force
+- Validate SQL: pwsh -NoLogo -NoProfile -File scripts/schema-tools/Lint-Sql.ps1 -PackagesDir packages
+- PHPUnit (full DB matrix): set BC_DB=mysql|postgres|mariadb then run `vendor/bin/phpunit --configuration tests/phpunit.xml.dist --testsuite "DB Integration"`
+
+## Quality Gates
+[x] Definitions present
+[x] Changelog present
+[x] Changelog fresh
+[x] Index coverage (PK + index)
+[ ] Outbound lineage captured
+[ ] Inbound lineage mapped
+[x] ERD renderable (mermaid)
+[ ] Seeds available – add smoke data seeds
+
+## Maintenance Checklist
+- [ ] Update schema map and split: Split-SchemaToPackages.ps1
+- [ ] Regenerate PHP DTO/Repo: Generate-PhpFromSchema.ps1
+- [ ] Rebuild definitions + README + docs index
+- [ ] Lint SQL + run full PHPUnit DB matrix
+
+## Regeneration
+- Definitions: pwsh -NoLogo -NoProfile -File scripts/schema-tools/Build-Definitions.ps1 -Force
+- Pkg README: pwsh -NoLogo -NoProfile -File scripts/docs/New-PackageReadmes.ps1 -Force
+- Docs index: pwsh -NoLogo -NoProfile -File scripts/docs/New-DocsIndex.ps1 -Force
+- Pkg changelog: pwsh -NoLogo -NoProfile -File scripts/docs/New-PackageChangelogs.ps1 -Force
+
+---
+Generated by scripts/docs/New-PackageReadmes.ps1 (map@sha1:5221bb5c65d0fbe010594635f9efb6fc13c307b2)
+⚖️ License: Proprietary – see [LICENSE](https://github.com/blackcatacademy/blackcat-database/blob/main/LICENSE).
