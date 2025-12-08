@@ -3,6 +3,7 @@
 ### Unreleased (up to HEAD)
 
 #### Chore
+- 2025-12-08: Refactored scripts, cleanup — @[359e924]
 - 2025-12-07: Refactorized build def script, added safety checks for err in schemes — @[401acae]
 - 2025-12-06: CRLF should be LF now — @[acd4395]
 - 2025-12-06: CRLF should be LF now — @[0014a96]
