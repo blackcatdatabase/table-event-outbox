@@ -3,6 +3,7 @@
 ### Unreleased (up to HEAD)
 
 #### Chore
+- 2025-12-09: Further debugging and ERD optimalization 1/* — @[6aa9154]
 - 2025-12-09: Customization of ERD, AUDIT, LF normalization — @[71a10fa]
 - 2025-12-09: Fixed audit.md, added navigation for ERD.md, solving LF again — @[1cc3b2c]
 - 2025-12-09: Debugged scripts, regenerated .md, edited README — @[0cfd18a]

@@ -5,18 +5,18 @@ Outbox table for domain events waiting to be published downstream.
 ## Columns
 | Column | Type | Null | Default | Description |
 | --- | --- | --- | --- | --- |
-| attempts | INT | NO | 0 | Number of delivery attempts. |
-| created_at | DATETIME(6) | NO | CURRENT_TIMESTAMP(6) | Creation timestamp (UTC). |
+| attempts | mysql: INT / postgres: INTEGER | NO | 0 | Number of delivery attempts. |
+| created_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | NO | CURRENT_TIMESTAMP(6) | Creation timestamp (UTC). |
 | entity_pk | VARCHAR(64) | NO |  | Primary key of the originating row. |
 | entity_table | VARCHAR(64) | NO |  | Originating table. |
 | event_key | CHAR(36) | NO |  | Event key / idempotency token. |
 | event_type | VARCHAR(100) | NO |  | Event type string. |
 | id | BIGINT | NO |  | Surrogate primary key. |
-| next_attempt_at | DATETIME(6) | YES |  | When the next attempt is scheduled. |
-| payload | JSON | NO |  | JSON payload delivered to consumers. |
-| processed_at | DATETIME(6) | YES |  | When processing completed. |
+| next_attempt_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When the next attempt is scheduled. |
+| payload | mysql: JSON / postgres: JSONB | NO |  | JSON payload delivered to consumers. |
+| processed_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When processing completed. |
 | producer_node | VARCHAR(100) | YES |  | Node that produced the event. |
-| status | ENUM('pending','sent','failed') | NO | pending | Delivery status. (enum: pending, sent, failed) |
+| status | mysql: ENUM('pending','sent','failed') / postgres: TEXT | NO | pending | Delivery status. (enum: pending, sent, failed) |
 
 ## Engine Details
 
