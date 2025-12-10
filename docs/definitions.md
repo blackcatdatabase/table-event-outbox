@@ -56,15 +56,15 @@ Indexes:
 ## Views
 | View | Engine | Flags | File |
 | --- | --- | --- | --- |
-| vw_event_outbox | mysql | algorithm=MERGE, security=INVOKER | [schema\040_views.mysql.sql](schema\040_views.mysql.sql) |
-| vw_event_outbox_due | mysql | algorithm=MERGE, security=INVOKER | [schema\040_views_joins.mysql.sql](schema\040_views_joins.mysql.sql) |
-| vw_event_outbox_latency | mysql | algorithm=MERGE, security=INVOKER | [schema\040_views_joins.mysql.sql](schema\040_views_joins.mysql.sql) |
-| vw_event_outbox_metrics | mysql | algorithm=MERGE, security=INVOKER | [schema\040_views_joins.mysql.sql](schema\040_views_joins.mysql.sql) |
-| vw_event_throughput_hourly | mysql | algorithm=MERGE, security=INVOKER | [schema\040_views_joins.mysql.sql](schema\040_views_joins.mysql.sql) |
-| vw_sync_backlog_by_node | mysql | algorithm=MERGE, security=INVOKER | [schema\040_views_joins.mysql.sql](schema\040_views_joins.mysql.sql) |
-| vw_event_outbox | postgres |  | [schema\040_views.postgres.sql](schema\040_views.postgres.sql) |
-| vw_event_outbox_due | postgres |  | [schema\040_views_joins.postgres.sql](schema\040_views_joins.postgres.sql) |
-| vw_event_outbox_latency | postgres |  | [schema\040_views_joins.postgres.sql](schema\040_views_joins.postgres.sql) |
-| vw_event_outbox_metrics | postgres |  | [schema\040_views_joins.postgres.sql](schema\040_views_joins.postgres.sql) |
-| vw_event_throughput_hourly | postgres |  | [schema\040_views_joins.postgres.sql](schema\040_views_joins.postgres.sql) |
-| vw_sync_backlog_by_node | postgres |  | [schema\040_views_joins.postgres.sql](schema\040_views_joins.postgres.sql) |
+| vw_event_outbox | mysql | algorithm=MERGE, security=INVOKER | [../schema/040_views.mysql.sql](../schema/040_views.mysql.sql) |
+| vw_event_outbox_due | mysql | algorithm=MERGE, security=INVOKER | [../schema/040_views_joins.mysql.sql](../schema/040_views_joins.mysql.sql) |
+| vw_event_outbox_latency | mysql | algorithm=MERGE, security=INVOKER | [../schema/040_views_joins.mysql.sql](../schema/040_views_joins.mysql.sql) |
+| vw_event_outbox_metrics | mysql | algorithm=MERGE, security=INVOKER | [../schema/040_views_joins.mysql.sql](../schema/040_views_joins.mysql.sql) |
+| vw_event_throughput_hourly | mysql | algorithm=MERGE, security=INVOKER | [../schema/040_views_joins.mysql.sql](../schema/040_views_joins.mysql.sql) |
+| vw_sync_backlog_by_node | mysql | algorithm=MERGE, security=INVOKER | [../schema/040_views_joins.mysql.sql](../schema/040_views_joins.mysql.sql) |
+| vw_event_outbox | postgres |  | [../schema/040_views.postgres.sql](../schema/040_views.postgres.sql) |
+| vw_event_outbox_due | postgres |  | [../schema/040_views_joins.postgres.sql](../schema/040_views_joins.postgres.sql) |
+| vw_event_outbox_latency | postgres |  | [../schema/040_views_joins.postgres.sql](../schema/040_views_joins.postgres.sql) |
+| vw_event_outbox_metrics | postgres |  | [../schema/040_views_joins.postgres.sql](../schema/040_views_joins.postgres.sql) |
+| vw_event_throughput_hourly | postgres |  | [../schema/040_views_joins.postgres.sql](../schema/040_views_joins.postgres.sql) |
+| vw_sync_backlog_by_node | postgres |  | [../schema/040_views_joins.postgres.sql](../schema/040_views_joins.postgres.sql) |
