@@ -17,7 +17,7 @@
 | What | Link | Notes |
 | --- | --- | --- |
 | Schema map | [schema-map-postgres.yaml](https://github.com/blackcatacademy/blackcat-database/blob/main/scripts/schema/schema-map-postgres.yaml) | Source for table metadata |
-| Pkg folder | [packages\event-outbox](https://github.com/blackcatacademy/blackcat-database/blob/main/packages/event-outbox) | Repo location |
+| Pkg folder | [packages/event-outbox](https://github.com/blackcatacademy/blackcat-database/blob/main/packages/event-outbox) | Repo location |
 | Definitions | [docs/definitions.md](docs/definitions.md) | Column/index/FK docs |
 | Engine differences | [docs/definitions.md#engine-differences](docs/definitions.md#engine-differences) | Drift section in definitions |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) | Recent changes |
