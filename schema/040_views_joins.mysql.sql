@@ -1,5 +1,23 @@
 -- Auto-generated from joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
 -- engine: mysql
+-- view:   event_outbox_due
+
+CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_outbox_due AS
+SELECT
+  eo.id,
+  eo.event_type,
+  eo.status,
+  eo.attempts,
+  eo.created_at,
+  eo.next_attempt_at,
+  TIMESTAMPDIFF(SECOND, eo.created_at, NOW()) AS age_sec,
+  TIMESTAMPDIFF(SECOND, COALESCE(eo.next_attempt_at, eo.created_at), NOW()) AS since_next_sec
+FROM event_outbox eo
+WHERE eo.status IN ('pending','failed')
+  AND (eo.next_attempt_at IS NULL OR eo.next_attempt_at <= NOW());
+
+-- Auto-generated from joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
+-- engine: mysql
 -- view:   event_outbox_latency
 
 CREATE OR REPLACE ALGORITHM=MERGE SQL SECURITY INVOKER VIEW vw_event_outbox_latency AS
@@ -21,6 +39,7 @@ FROM (
   WHERE eo.processed_at IS NOT NULL
 ) ranked
 WHERE ranked.rn = 1;
+
 
 -- Auto-generated from joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
 -- engine: mysql
