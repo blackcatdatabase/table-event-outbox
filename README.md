@@ -81,8 +81,8 @@ _No foreign keys declared in docs/definitions.md (inbound or outbound)._
 _No engine differences detected._
 
 ## Constraints Snapshot
-- `created_at` – default=CURRENT_TIMESTAMP(6)
 - `attempts` – default=0
+- `created_at` – default=CURRENT_TIMESTAMP(6)
 - `status` – default=pending, enum
 
 ## Schema Files

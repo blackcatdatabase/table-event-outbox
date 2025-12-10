@@ -5,18 +5,18 @@ Outbox table for domain events waiting to be published downstream.
 ## Columns
 | Column | Type | Null | Default | Description |
 | --- | --- | --- | --- | --- |
-| created_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | NO | CURRENT_TIMESTAMP(6) | Creation timestamp (UTC). |
-| id | BIGINT | NO |  | Surrogate primary key. |
 | attempts | mysql: INT / postgres: INTEGER | NO | 0 | Number of delivery attempts. |
-| status | mysql: ENUM('pending','sent','failed') / postgres: TEXT | NO | pending | Delivery status. (enum: pending, sent, failed) |
-| entity_table | VARCHAR(64) | NO |  | Originating table. |
-| next_attempt_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When the next attempt is scheduled. |
-| event_key | CHAR(36) | NO |  | Event key / idempotency token. |
-| processed_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When processing completed. |
-| payload | mysql: JSON / postgres: JSONB | NO |  | JSON payload delivered to consumers. |
-| event_type | VARCHAR(100) | NO |  | Event type string. |
-| producer_node | VARCHAR(100) | YES |  | Node that produced the event. |
+| created_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | NO | CURRENT_TIMESTAMP(6) | Creation timestamp (UTC). |
 | entity_pk | VARCHAR(64) | NO |  | Primary key of the originating row. |
+| entity_table | VARCHAR(64) | NO |  | Originating table. |
+| event_key | CHAR(36) | NO |  | Event key / idempotency token. |
+| event_type | VARCHAR(100) | NO |  | Event type string. |
+| id | BIGINT | NO |  | Surrogate primary key. |
+| next_attempt_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When the next attempt is scheduled. |
+| payload | mysql: JSON / postgres: JSONB | NO |  | JSON payload delivered to consumers. |
+| processed_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When processing completed. |
+| producer_node | VARCHAR(100) | YES |  | Node that produced the event. |
+| status | mysql: ENUM('pending','sent','failed') / postgres: TEXT | NO | pending | Delivery status. (enum: pending, sent, failed) |
 
 ## Engine Details
 
