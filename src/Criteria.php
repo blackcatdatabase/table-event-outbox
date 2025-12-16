@@ -41,11 +41,11 @@ final class Criteria extends BaseCriteria
         return [ 'event_key', 'entity_table', 'entity_pk', 'event_type', 'producer_node' ];
     }
 
-/** Columns allowed in ORDER BY (falls back to filterable() when empty). */
-protected function sortable(): array
-{
-    return [ 'id', 'event_key', 'entity_table', 'entity_pk', 'event_type', 'status', 'attempts', 'next_attempt_at', 'processed_at', 'producer_node', 'created_at' ];
-}
+    /** Columns allowed in ORDER BY (falls back to filterable() when empty). */
+    protected function sortable(): array
+    {
+        return [ 'id', 'event_key', 'entity_table', 'entity_pk', 'event_type', 'status', 'attempts', 'next_attempt_at', 'processed_at', 'producer_node', 'created_at' ];
+    }
 
     /**
      * Whitelist of joinable entities (for safe ->join() usage):
