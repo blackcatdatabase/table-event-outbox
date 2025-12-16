@@ -3,6 +3,16 @@
 ### Unreleased (up to HEAD)
 
 #### Chore
+- 2025-12-15: Regen of submoduler, pinned pointer — @[50b46ed]
+- 2025-12-15: Refresh after generation, fixed spaces in criteria template — @[16afa51]
+- 2025-12-15: Schema update + regenerate packages — @[728c27d]
+- 2025-12-10: Everything should be resolved now, next step is further cleanup and customization — @[b618320]
+- 2025-12-10: Forced order as in schema, Debug log in worker should be only if dirty — @[6cf081b]
+- 2025-12-10: Fix. And yes it was stupid — @[faed197]
+- 2025-12-10: Will it fix it? — @[8c65390]
+- 2025-12-10: Fixed generators — @[7be0e15]
+- 2025-12-10: Maybe the datetime is different. So changed days to tick — @[84d5510]
+- 2025-12-10: Refreshed readmes, changelog — @[b03c13d]
 - 2025-12-10: Fixed definitions.md path — @[fe7e737]
 - 2025-12-10: Builddefinitions now shows both types — @[3327b9d]
 - 2025-12-09: Further debugging and ERD optimalization 1/* — @[6aa9154]
