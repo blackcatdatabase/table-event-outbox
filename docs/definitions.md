@@ -3,20 +3,20 @@
 Outbox table for domain events waiting to be published downstream.
 
 ## Columns
-| Column | Type | Null | Default | Description |
-| --- | --- | --- | --- | --- |
-| id | BIGINT | NO |  | Surrogate primary key. |
-| event_key | CHAR(36) | NO |  | Event key / idempotency token. |
-| entity_table | VARCHAR(64) | NO |  | Originating table. |
-| entity_pk | VARCHAR(64) | NO |  | Primary key of the originating row. |
-| event_type | VARCHAR(100) | NO |  | Event type string. |
-| payload | mysql: JSON / postgres: JSONB | NO |  | JSON payload delivered to consumers. |
-| status | mysql: ENUM('pending','sent','failed') / postgres: TEXT | NO | pending | Delivery status. (enum: pending, sent, failed) |
-| attempts | mysql: INT / postgres: INTEGER | NO | 0 | Number of delivery attempts. |
-| next_attempt_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When the next attempt is scheduled. |
-| processed_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When processing completed. |
-| producer_node | VARCHAR(100) | YES |  | Node that produced the event. |
-| created_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | NO | CURRENT_TIMESTAMP(6) | Creation timestamp (UTC). |
+| Column | Type | Null | Default | Description | Crypto |
+| --- | --- | --- | --- | --- | --- |
+| id | BIGINT | NO |  | Surrogate primary key. |  |
+| event_key | CHAR(36) | NO |  | Event key / idempotency token. |  |
+| entity_table | VARCHAR(64) | NO |  | Originating table. |  |
+| entity_pk | VARCHAR(64) | NO |  | Primary key of the originating row. |  |
+| event_type | VARCHAR(100) | NO |  | Event type string. |  |
+| payload | mysql: JSON / postgres: JSONB | NO |  | JSON payload delivered to consumers. |  |
+| status | mysql: ENUM('pending','sent','failed') / postgres: TEXT | NO | pending | Delivery status. (enum: pending, sent, failed) |  |
+| attempts | mysql: INT / postgres: INTEGER | NO | 0 | Number of delivery attempts. |  |
+| next_attempt_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When the next attempt is scheduled. |  |
+| processed_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | YES |  | When processing completed. |  |
+| producer_node | VARCHAR(100) | YES |  | Node that produced the event. |  |
+| created_at | mysql: DATETIME(6) / postgres: TIMESTAMPTZ(6) | NO | CURRENT_TIMESTAMP(6) | Creation timestamp (UTC). |  |
 
 ## Engine Details
 

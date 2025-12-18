@@ -3,10 +3,7 @@
 ### Unreleased (up to HEAD)
 
 #### Chore
-- 2025-12-16: Submodules were stale — @[b5972f6]
-- 2025-12-15: Regen of submoduler, pinned pointer — @[50b46ed]
-- 2025-12-15: Refresh after generation, fixed spaces in criteria template — @[16afa51]
-- 2025-12-15: Schema update + regenerate packages — @[728c27d]
+- 2025-12-18: chore: refresh release snapshot (#13) — @[fbdd290]
 - 2025-12-10: Everything should be resolved now, next step is further cleanup and customization — @[b618320]
 - 2025-12-10: Forced order as in schema, Debug log in worker should be only if dirty — @[6cf081b]
 - 2025-12-10: Fix. And yes it was stupid — @[faed197]
