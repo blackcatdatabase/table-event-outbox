@@ -1,4 +1,4 @@
--- Auto-generated from core\joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
+-- Auto-generated from core/joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
 -- engine: mysql
 -- view:   event_outbox_due
 
@@ -16,7 +16,7 @@ FROM event_outbox eo
 WHERE eo.status IN ('pending','failed')
   AND (eo.next_attempt_at IS NULL OR eo.next_attempt_at <= NOW());
 
--- Auto-generated from core\joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
+-- Auto-generated from core/joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
 -- engine: mysql
 -- view:   event_outbox_latency
 
@@ -41,7 +41,7 @@ FROM (
 WHERE ranked.rn = 1;
 
 
--- Auto-generated from core\joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
+-- Auto-generated from core/joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
 -- engine: mysql
 -- view:   event_outbox_metrics
 
@@ -93,7 +93,7 @@ FROM base b
 LEFT JOIN pcts p ON p.event_type = b.event_type;
 
 
--- Auto-generated from core\joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
+-- Auto-generated from core/joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
 -- engine: mysql
 -- view:   event_throughput_hourly
 
@@ -120,7 +120,7 @@ FROM (
 GROUP BY hour_ts;
 
 
--- Auto-generated from core\joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
+-- Auto-generated from core/joins-mysql.yaml (map@sha1:DA70105A5B799F72A56FEAB71A5171F946A770D2)
 -- engine: mysql
 -- view:   sync_backlog_by_node
 
