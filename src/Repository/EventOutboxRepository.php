@@ -24,12 +24,12 @@ class EventOutboxRepository implements EventOutboxRepositoryInterface, RepoContr
 use OrderByTools, PkTools, RepositoryHelpers;
 
     /** @var mixed literal token for upsert keys (array or empty). */
-    private mixed $tokenUpsertKeys = [];
+    private mixed $tokenUpsertKeys = [ 'event_key' ];
 
     public function __construct(private readonly Database $db) {}
 
     /**
-     * Optionally override the Definitions FQN â€“ trait otherwise infers it from the repository FQN.
+     * Optionally override the Definitions FQN - trait otherwise infers it from the repository FQN.
      */
     protected function def(): string { return \BlackCat\Database\Packages\EventOutbox\Definitions::class; }
 
@@ -131,7 +131,7 @@ use OrderByTools, PkTools, RepositoryHelpers;
         return [$row, $updateCols];
     }
 
-    /** Standard upsert â€“ preserves soft-delete (no revive). */
+    /** Standard upsert - preserves soft-delete (no revive). */
     public function upsert(#[\SensitiveParameter] array $row): void
     {
         $this->doUpsert($row, false);
@@ -151,7 +151,7 @@ use OrderByTools, PkTools, RepositoryHelpers;
 
         $keys = $this->resolveUpsertKeys();
 
-        $updCols = [];
+        $updCols = [ 'payload', 'status', 'attempts', 'next_attempt_at', 'processed_at', 'producer_node' ];
         $updCols = array_values(array_diff($updCols, array_merge($this->pkColumns(Definitions::class), $keys)));
 
         // Revive policy
@@ -168,7 +168,7 @@ use OrderByTools, PkTools, RepositoryHelpers;
         $this->db->execute($sql, $params);
     }
 
-    /** Upsert by keys â€“ default behavior keeps soft-delete. */
+    /** Upsert by keys - default behavior keeps soft-delete. */
     public function upsertByKeys(array $row, array $keys, array $updateColumns = []): void
     {
         $this->doUpsertByKeys($row, $keys, $updateColumns, false);
@@ -182,8 +182,9 @@ use OrderByTools, PkTools, RepositoryHelpers;
 
     private function doUpsertByKeys(array $row, array $keys, array $updateColumns, bool $revive): void
     {
-        $row  = $this->filterCols($this->normalizeInputRow($row));
         if (!$row && !$keys) return;
+
+        $row = $this->normalizeInputRow($row);
 
         // ensure key values exist in the row (fill from provided keys when missing)
         $isAssoc = $keys && array_keys($keys) !== range(0, count($keys)-1);
@@ -194,6 +195,9 @@ use OrderByTools, PkTools, RepositoryHelpers;
 
         // Revive policy
         [$row, $updCols] = $this->applyUpsertRevivePolicy($row, $updCols, $revive);
+
+        $row  = $this->filterCols($row);
+        if (!$row) return;
 
         [$sql, $params] = UpsertBuilder::buildByKeys(
             $this->db,
@@ -218,7 +222,7 @@ use OrderByTools, PkTools, RepositoryHelpers;
         $helperKeys = $this->resolveUpsertKeys();
         if ($helperKeys && class_exists(\BlackCat\Database\Support\BulkUpsertHelper::class)) {
           $bulk = new \BlackCat\Database\Support\BulkUpsertHelper($this->db, \BlackCat\Database\Packages\EventOutbox\Definitions::class);
-          $bulk->upsertMany($rows, $helperKeys, []);
+          $bulk->upsertMany($rows, $helperKeys, [ 'payload', 'status', 'attempts', 'next_attempt_at', 'processed_at', 'producer_node' ]);
           return count($rows);
         }
 
@@ -235,8 +239,25 @@ use OrderByTools, PkTools, RepositoryHelpers;
         // Optimized helper (revive mode)
         $helperKeys = $this->resolveUpsertKeys();
         if ($helperKeys && class_exists(\BlackCat\Database\Support\BulkUpsertHelper::class)) {
+          $soft = Definitions::softDeleteColumn();
+          $rows = array_values(array_filter(
+              array_map(function ($r) use ($soft) {
+                  if (!is_array($r)) { return null; }
+                  $r = $this->normalizeInputRow($r);
+                  if ($soft) { $r[$soft] = null; }
+                  $r = $this->filterCols($r);
+                  return $r ?: null;
+              }, $rows),
+              fn($r) => !empty($r)
+          ));
+          if (!$rows) { return 0; }
+
+          /** @var list<string> $updCols */
+          $updCols = [ 'payload', 'status', 'attempts', 'next_attempt_at', 'processed_at', 'producer_node' ];
+          if ($updCols && $soft && !in_array($soft, $updCols, true)) { $updCols[] = $soft; }
+
           $bulk = new \BlackCat\Database\Support\BulkUpsertHelper($this->db, \BlackCat\Database\Packages\EventOutbox\Definitions::class);
-          $bulk->upsertMany($rows, $helperKeys, []);
+          $bulk->upsertMany($rows, $helperKeys, $updCols);
           return count($rows);
         }
 
@@ -333,7 +354,7 @@ use OrderByTools, PkTools, RepositoryHelpers;
             $params[$k]   = $v;
         }
 
-        // touch â€“ verze/updated_at
+        // touch - version/updated_at
         if ($verCol && $this->isNumericVersion()) {
             $assign[] = Ident::q($this->db, $verCol) . ' = ' . Ident::q($this->db, $verCol) . ' + 1';
         }
@@ -457,6 +478,8 @@ use OrderByTools, PkTools, RepositoryHelpers;
     {
         if (!$keyValues) return null;
         $view = Ident::qi($this->db, Definitions::contractView());
+
+        $keyValues = $this->ingressCriteriaTransform($keyValues);
 
         $parts  = [];
         $params = [];

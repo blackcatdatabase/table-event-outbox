@@ -1,0 +1,44 @@
+{
+  "tables": {
+    "event_outbox": {
+      "columns": {
+        "attempts": {
+          "strategy": "passthrough"
+        },
+        "created_at": {
+          "strategy": "passthrough"
+        },
+        "entity_pk": {
+          "strategy": "passthrough"
+        },
+        "entity_table": {
+          "strategy": "passthrough"
+        },
+        "event_key": {
+          "strategy": "passthrough"
+        },
+        "event_type": {
+          "strategy": "passthrough"
+        },
+        "id": {
+          "strategy": "passthrough"
+        },
+        "next_attempt_at": {
+          "strategy": "passthrough"
+        },
+        "payload": {
+          "strategy": "passthrough"
+        },
+        "processed_at": {
+          "strategy": "passthrough"
+        },
+        "producer_node": {
+          "strategy": "passthrough"
+        },
+        "status": {
+          "strategy": "passthrough"
+        }
+      }
+    }
+  }
+}
