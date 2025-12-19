@@ -19,6 +19,25 @@ WHERE eo.status IN ($$pending$$,$$failed$$)
 
 -- Auto-generated from core/joins-postgres.yaml (map@sha1:29CF395A3A4C8964482083733F8E613ABFBEF5CC)
 -- engine: postgres
+-- view:   event_outbox_due
+
+-- Pending/due outbox messages with lag
+CREATE OR REPLACE VIEW vw_event_outbox_due AS
+SELECT
+  eo.id,
+  eo.event_type,
+  eo.status,
+  eo.attempts,
+  eo.created_at,
+  eo.next_attempt_at,
+  EXTRACT(EPOCH FROM (now() - eo.created_at)) AS age_sec,
+  EXTRACT(EPOCH FROM (now() - COALESCE(eo.next_attempt_at, eo.created_at))) AS since_next_sec
+FROM event_outbox eo
+WHERE eo.status IN ($$pending$$,$$failed$$)
+  AND (eo.next_attempt_at IS NULL OR eo.next_attempt_at <= now());
+
+-- Auto-generated from joins-postgres.yaml (map@sha1:29CF395A3A4C8964482083733F8E613ABFBEF5CC)
+-- engine: postgres
 -- view:   event_outbox_latency
 
 -- Processing latency (created -> processed) by type
